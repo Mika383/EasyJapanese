@@ -5,6 +5,9 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "sonner";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
+import { FloatingBackground } from "@/components/floating-background";
+import { auth } from "@/auth";
+import { AuthSessionProvider } from "@/components/auth/session-provider";
 
 const sans = Be_Vietnam_Pro({ 
   subsets: ["latin", "vietnamese"], 
@@ -29,11 +32,13 @@ export const metadata: Metadata = {
   description: "Website tự học tiếng Nhật: ghi chú từ vựng, luyện viết, luyện nghe, ngữ pháp và flashcard.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await auth()
+
   return (
     <html lang="ja" suppressHydrationWarning>
       <body className={`${sans.variable} ${serif.variable} ${jp.variable} font-sans antialiased text-pretty`}>
@@ -43,10 +48,19 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Navbar />
-          <main className="min-h-screen">{children}</main>
-          <Footer />
-          <Toaster position="top-center" richColors />
+          <AuthSessionProvider session={session}>
+            <FloatingBackground />
+            <Navbar user={session?.user} />
+            <main className="min-h-screen">{children}</main>
+            <Footer />
+            <Toaster
+              position="top-right"
+              richColors
+              toastOptions={{
+                className: "text-lg px-6 py-4 font-semibold",
+              }}
+            />
+          </AuthSessionProvider>
         </ThemeProvider>
       </body>
     </html>

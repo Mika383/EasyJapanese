@@ -4,11 +4,22 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Languages, BookOpen, PenTool, Mic2, Edit3, Menu, X } from "lucide-react"
 import { ThemeToggle } from "./theme-toggle"
+import { NavbarUser } from "./navbar-user"
 import { useState } from "react"
+import { useSession } from "next-auth/react"
 
-export function Navbar() {
+interface NavbarProps {
+  user?: {
+    name?: string | null
+    email?: string | null
+  } | null
+}
+
+export function Navbar({ user }: NavbarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const pathname = usePathname()
+  const { data: session } = useSession()
+  const currentUser = session?.user ?? user
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
@@ -30,12 +41,16 @@ export function Navbar() {
 
         <div className="flex items-center gap-2 md:gap-4">
           <ThemeToggle />
-          <Link
-            href="/login"
-            className="hidden sm:inline-flex h-10 items-center justify-center border-2 border-primary bg-primary px-8 py-2 text-sm font-black uppercase tracking-widest text-primary-foreground transition-all hover:bg-background hover:text-primary focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
-          >
-            Đăng nhập
-          </Link>
+          {currentUser ? (
+            <NavbarUser name={currentUser.name} email={currentUser.email} />
+          ) : pathname !== "/login" ? (
+            <Link
+              href="/login"
+              className="hidden sm:inline-flex h-10 items-center justify-center border-2 border-primary bg-primary px-8 py-2 text-sm font-black uppercase tracking-widest text-primary-foreground transition-all hover:bg-background hover:text-primary focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
+            >
+              Đăng nhập
+            </Link>
+          ) : null}
           
           {/* Mobile Menu Toggle */}
           <button 
@@ -55,13 +70,19 @@ export function Navbar() {
             <MobileNavLink href="/writing" icon={<PenTool className="h-5 w-5" />} label="Luyện viết" onClick={() => setIsMenuOpen(false)} active={pathname.startsWith("/writing")} />
             <MobileNavLink href="/dictation" icon={<Mic2 className="h-5 w-5" />} label="Luyện nghe" onClick={() => setIsMenuOpen(false)} active={pathname.startsWith("/dictation")} />
             <MobileNavLink href="/notes" icon={<Edit3 className="h-5 w-5" />} label="Ghi chú" onClick={() => setIsMenuOpen(false)} active={pathname.startsWith("/notes")} />
-            <Link
-              href="/login"
-              onClick={() => setIsMenuOpen(false)}
-              className="mt-4 flex h-12 items-center justify-center border-2 border-primary bg-primary text-sm font-black uppercase tracking-widest text-primary-foreground"
-            >
-              Đăng nhập
-            </Link>
+            {currentUser ? (
+              <div className="mt-4">
+                <NavbarUser name={currentUser.name} email={currentUser.email} />
+              </div>
+            ) : pathname !== "/login" ? (
+              <Link
+                href="/login"
+                onClick={() => setIsMenuOpen(false)}
+                className="mt-4 flex h-12 items-center justify-center border-2 border-primary bg-primary text-sm font-black uppercase tracking-widest text-primary-foreground"
+              >
+                Đăng nhập
+              </Link>
+            ) : null}
           </div>
         </div>
       )}
