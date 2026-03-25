@@ -58,7 +58,10 @@ export async function getNotes(): Promise<NoteListItem[]> {
     orderBy: { updatedAt: "desc" },
     select: { id: true, title: true, content: true, updatedAt: true },
   })
-  return notes.map((note) => ({ ...note, updatedAt: note.updatedAt.getTime() }))
+  return notes.map((note: { id: string; title: string; content: string; updatedAt: Date }) => ({
+    ...note,
+    updatedAt: note.updatedAt.getTime(),
+  }))
 }
 
 export async function createGrammarNote(input: GrammarInput): Promise<NoteListItem> {
