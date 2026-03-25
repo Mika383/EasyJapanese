@@ -7,6 +7,7 @@ export default function DictationPage() {
         title="Luyện Nghe" 
         description="Hệ thống bài tập nghe hiểu (Dictation) để cải thiện phản xạ âm thanh của bạn đang được hoàn thiện."
         jpTitle="聴解"
+        jpHira="ちょうかい"
       />
     </main>
   )

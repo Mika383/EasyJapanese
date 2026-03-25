@@ -8,6 +8,7 @@ import { Footer } from "@/components/footer";
 import { FloatingBackground } from "@/components/floating-background";
 import { auth } from "@/auth";
 import { AuthSessionProvider } from "@/components/auth/session-provider";
+import { RouteLoading } from "@/components/loading/route-loading";
 
 const sans = Be_Vietnam_Pro({ 
   subsets: ["latin", "vietnamese"], 
@@ -51,6 +52,7 @@ export default async function RootLayout({
           <AuthSessionProvider session={session}>
             <FloatingBackground />
             <Navbar user={session?.user} />
+            <RouteLoading />
             <main className="min-h-screen">{children}</main>
             <Footer />
             <Toaster

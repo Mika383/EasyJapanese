@@ -10,12 +10,14 @@ interface ComingSoonProps {
   title: string;
   description?: string;
   jpTitle?: string;
+  jpHira?: string;
 }
 
 export function ComingSoon({ 
   title, 
   description = "Tính năng này đang được rèn giũa và sẽ sớm ra mắt.",
-  jpTitle = "準備中"
+  jpTitle = "準備中",
+  jpHira = "じゅんびちゅう"
 }: ComingSoonProps) {
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -66,9 +68,16 @@ export function ComingSoon({
 
         <div className="space-y-4 relative z-10">
           <div className="cs-title">
-            <span className="text-xs font-black tracking-[0.3em] text-muted-foreground uppercase mb-2 block">
-              {jpTitle} (Junbichū)
-            </span>
+            <div className="flex flex-col items-center gap-2 mb-4">
+              <span className="text-xs font-black tracking-[0.2em] text-primary bg-primary/10 px-3 py-1 rounded uppercase">
+                準備中 (じゅんびちゅう)
+              </span>
+              {jpTitle !== "準備中" && (
+                <span className="text-xl font-bold tracking-[0.2em] text-muted-foreground/80 font-jp mt-1">
+                  {jpTitle} <span className="text-sm font-medium tracking-widest ml-1 text-muted-foreground/60">({jpHira})</span>
+                </span>
+              )}
+            </div>
             <h1 className="text-4xl md:text-5xl font-black text-foreground">
               {title}
             </h1>

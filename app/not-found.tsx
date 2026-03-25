@@ -62,7 +62,7 @@ export default function NotFound() {
         
         <div className="subtitle space-y-4">
           <h2 className="text-2xl md:text-4xl font-bold font-jp">
-            迷路 (Meiro) - Lạc đường
+            迷路 (めいろ) - Lạc đường
           </h2>
           <p className="text-muted-foreground text-lg md:text-xl max-w-md mx-auto">
             Gió đã thổi bay trang giấy này đi mất rồi. Dường như bạn đã đi lạc khỏi con đường học tập.
