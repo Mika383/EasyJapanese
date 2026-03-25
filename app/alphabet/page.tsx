@@ -17,14 +17,19 @@ export default function AlphabetPage() {
     if (!cards) return
 
     gsap.killTweensOf(cards)
-    gsap.set(cards, { opacity: 0, y: 15 })
+    gsap.set(cards, { opacity: 0, y: 20, scale: 0.95 })
     
     gsap.to(cards, {
       opacity: 1,
       y: 0,
-      duration: 0.4,
-      stagger: 0.008,
-      ease: "power2.out",
+      scale: 1,
+      duration: 0.5,
+      stagger: {
+        amount: 0.8,
+        grid: "auto",
+        from: "start",
+      },
+      ease: "back.out(1.5)",
     })
   }, { dependencies: [type], scope: containerRef })
 

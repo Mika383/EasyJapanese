@@ -1,0 +1,204 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+  engineType = "library"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Enums
+enum UserRole {
+  STUDENT
+  TEACHER
+  STAFF
+  ADMIN
+}
+
+enum NoteType {
+  GRAMMAR
+  VOCAB
+}
+
+enum ReactionType {
+  LIKE
+  DISLIKE
+}
+
+enum WordScriptType {
+  KANJI
+  HIRAGANA
+  KATAKANA
+}
+
+enum PartOfSpeech {
+  NOUN
+  VERB
+  ADJECTIVE
+  ADVERB
+  CONJUNCTION
+  PREPOSITION
+  OTHER
+}
+
+// Auth (NextAuth.js)
+model User {
+  id             String    @id @default(cuid())
+  name           String?
+  email          String?   @unique
+  emailVerified  DateTime?
+  image          String?
+  passwordHash   String?
+  role           UserRole  @default(STUDENT)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  accounts       Account[]
+  sessions       Session[]
+  notes          Note[]
+  grammarReactions GrammarReaction[]
+  grammarSaves     GrammarSave[]
+}
+
+model Account {
+  id                 String   @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?
+  access_token       String?
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Notes
+model Note {
+  id        String    @id @default(cuid())
+  userId    String
+  type      NoteType
+  title     String
+  content   String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  grammar   GrammarNote?
+  vocab     VocabNote?
+
+  @@index([userId, updatedAt])
+}
+
+model GrammarNote {
+  id        String    @id @default(cuid())
+  noteId    String    @unique
+  title     String
+  formula   String
+  usage     String
+  isPublic  Boolean   @default(false)
+  sharedAt  DateTime?
+  shareCode String?   @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  note      Note      @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  examples  GrammarExample[]
+  reactions GrammarReaction[]
+  saves     GrammarSave[]
+}
+
+model GrammarExample {
+  id        String    @id @default(cuid())
+  grammarId String
+  jp        String
+  meaning   String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  grammar   GrammarNote @relation(fields: [grammarId], references: [id], onDelete: Cascade)
+
+  @@index([grammarId])
+}
+
+model GrammarReaction {
+  id        String       @id @default(cuid())
+  grammarId String
+  userId    String
+  type      ReactionType
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  deletedAt DateTime?
+
+  grammar   GrammarNote  @relation(fields: [grammarId], references: [id], onDelete: Cascade)
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([grammarId, userId])
+  @@index([userId, type])
+}
+
+model GrammarSave {
+  id        String      @id @default(cuid())
+  grammarId String
+  userId    String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  deletedAt DateTime?
+
+  grammar   GrammarNote @relation(fields: [grammarId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([grammarId, userId])
+  @@index([userId])
+}
+
+model VocabNote {
+  id           String          @id @default(cuid())
+  noteId       String          @unique
+  scriptType   WordScriptType
+  partOfSpeech PartOfSpeech
+  kanji        String?
+  hiragana     String?
+  katakana     String?
+  reading      String?
+  meaning      String
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  deletedAt    DateTime?
+
+  note         Note            @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@index([scriptType, partOfSpeech])
+}

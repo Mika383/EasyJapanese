@@ -61,7 +61,7 @@ export default function Home() {
             EASY <span className="text-primary italic">JAPANESE</span>
           </h1>
           <p className="hero-desc text-xl md:text-2xl text-muted-foreground mb-12 max-w-2xl mx-auto font-serif italic">
-            "Hành trình vạn dặm bắt đầu từ một bước chân."
+            &quot;Hành trình vạn dặm bắt đầu từ một bước chân.&quot;
           </p>
           <div className="hero-btns flex flex-col sm:flex-row gap-6 justify-center">
             <Link
