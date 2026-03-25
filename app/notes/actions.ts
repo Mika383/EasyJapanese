@@ -3,7 +3,16 @@
 import { revalidatePath } from "next/cache"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import { NoteType, PartOfSpeech, WordScriptType } from "@prisma/client"
+type PrismaNoteType = "GRAMMAR" | "VOCAB"
+type PrismaWordScriptType = "KANJI" | "HIRAGANA" | "KATAKANA"
+type PrismaPartOfSpeech =
+  | "NOUN"
+  | "VERB"
+  | "ADJECTIVE"
+  | "ADVERB"
+  | "CONJUNCTION"
+  | "PREPOSITION"
+  | "OTHER"
 
 export type NoteListItem = {
   id: string
@@ -70,7 +79,7 @@ export async function createGrammarNote(input: GrammarInput): Promise<NoteListIt
   const note = await prisma.note.create({
     data: {
       userId,
-      type: NoteType.GRAMMAR,
+      type: "GRAMMAR" as PrismaNoteType,
       title,
       content: contentLines.join("\n"),
       grammar: {
@@ -94,28 +103,28 @@ export async function createGrammarNote(input: GrammarInput): Promise<NoteListIt
   return { ...note, updatedAt: note.updatedAt.getTime() }
 }
 
-function mapScriptType(scriptType: VocabInput["scriptType"]): WordScriptType {
-  if (scriptType === "kanji") return WordScriptType.KANJI
-  if (scriptType === "hira") return WordScriptType.HIRAGANA
-  return WordScriptType.KATAKANA
+function mapScriptType(scriptType: VocabInput["scriptType"]): PrismaWordScriptType {
+  if (scriptType === "kanji") return "KANJI"
+  if (scriptType === "hira") return "HIRAGANA"
+  return "KATAKANA"
 }
 
-function mapPartOfSpeech(value: string): PartOfSpeech {
+function mapPartOfSpeech(value: string): PrismaPartOfSpeech {
   switch (value) {
     case "Danh từ":
-      return PartOfSpeech.NOUN
+      return "NOUN"
     case "Động từ":
-      return PartOfSpeech.VERB
+      return "VERB"
     case "Tính từ":
-      return PartOfSpeech.ADJECTIVE
+      return "ADJECTIVE"
     case "Trạng từ":
-      return PartOfSpeech.ADVERB
+      return "ADVERB"
     case "Liên từ":
-      return PartOfSpeech.CONJUNCTION
+      return "CONJUNCTION"
     case "Giới từ":
-      return PartOfSpeech.PREPOSITION
+      return "PREPOSITION"
     default:
-      return PartOfSpeech.OTHER
+      return "OTHER"
   }
 }
 
@@ -159,7 +168,7 @@ export async function createVocabNote(input: VocabInput): Promise<NoteListItem> 
   const note = await prisma.note.create({
     data: {
       userId,
-      type: NoteType.VOCAB,
+      type: "VOCAB" as PrismaNoteType,
       title,
       content: contentLines.join("\n"),
       vocab: {
