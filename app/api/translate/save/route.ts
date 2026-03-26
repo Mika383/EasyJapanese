@@ -51,6 +51,22 @@ export async function POST(req: Request) {
       })
     }
 
+    const currentCount = await prisma.translationHistory.count({
+      where: { userId },
+    })
+
+    if (currentCount >= 10) {
+      return NextResponse.json(
+        {
+          error: {
+            code: "LIMIT_REACHED",
+            message: "Bạn chỉ có thể lưu tối đa 10 bản dịch.",
+          },
+        },
+        { status: 409 }
+      )
+    }
+
     const saved = await prisma.translationHistory.create({
       data: {
         userId,

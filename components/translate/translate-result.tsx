@@ -14,6 +14,7 @@ interface TranslateResultProps {
   error: string | null
   canSave: boolean
   onSave: () => void
+  onLockedSave: () => void
   includeKana: boolean
   includeGrammar: boolean
 }
@@ -25,6 +26,7 @@ export function TranslateResult({
   error,
   canSave,
   onSave,
+  onLockedSave,
   includeKana,
   includeGrammar,
 }: TranslateResultProps) {
@@ -73,9 +75,17 @@ export function TranslateResult({
         <Button
           type="button"
           variant="outline"
-          onClick={onSave}
-          disabled={!canSave || isSaving}
-          className="min-w-[140px] font-semibold"
+          onClick={() => {
+            if (!canSave) {
+              onLockedSave()
+              return
+            }
+            onSave()
+          }}
+          aria-disabled={!canSave || isSaving}
+          className={`min-w-[140px] font-semibold ${
+            !canSave || isSaving ? "opacity-60 cursor-not-allowed" : ""
+          }`}
         >
           {isSaving ? "Đang lưu..." : "Lưu bản dịch"}
         </Button>
