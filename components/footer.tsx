@@ -35,6 +35,15 @@ export function Footer() {
                 { label: "Liên hệ", href: "/contact" },
               ]}
             />
+            <FooterLinkGroup
+              title="Kết nối"
+              links={[
+                { label: "Facebook", href: "https://www.facebook.com/DHCrafter/" },
+                { label: "Instagram", href: "https://www.instagram.com/dwuyhaiii/" },
+                { label: "Email", href: "mailto:duyhai03082003@gmail.com" },
+                { label: "Phone", href: "tel:0856686130" },
+              ]}
+            />
           </div>
         </div>
 
@@ -46,19 +55,42 @@ export function Footer() {
   )
 }
 
-function FooterLinkGroup({ title, links }: { title: string; links: { label: string; href: string }[] }) {
+type FooterLink = { label: string; href: string }
+
+function FooterLinkGroup({ title, links }: { title: string; links: FooterLink[] }) {
   return (
     <div className="flex flex-col gap-6">
       <h4 className="text-xs font-black uppercase tracking-[0.2em]">{title}</h4>
       <ul className="flex flex-col gap-3">
         {links.map((link) => (
           <li key={link.href}>
-            <Link 
-              href={link.href}
-              className="text-sm text-muted-foreground transition-all hover:text-primary hover:pl-2"
-            >
-              {link.label}
-            </Link>
+            {link.href.startsWith("http") ? (
+              <a
+                href={link.href}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex pl-2 text-sm text-muted-foreground transition-transform transition-colors -translate-x-2 hover:translate-x-0 hover:text-primary"
+                suppressHydrationWarning
+              >
+                {link.label}
+              </a>
+            ) : link.href.startsWith("mailto:") || link.href.startsWith("tel:") ? (
+              <a
+                href={link.href}
+                className="inline-flex pl-2 text-sm text-muted-foreground transition-transform transition-colors -translate-x-2 hover:translate-x-0 hover:text-primary"
+                suppressHydrationWarning
+              >
+                {link.label}
+              </a>
+            ) : (
+              <Link
+                href={link.href}
+                className="inline-flex pl-2 text-sm text-muted-foreground transition-transform transition-colors -translate-x-2 hover:translate-x-0 hover:text-primary"
+                suppressHydrationWarning
+              >
+                {link.label}
+              </Link>
+            )}
           </li>
         ))}
       </ul>
