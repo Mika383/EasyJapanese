@@ -9,6 +9,8 @@ import { FloatingBackground } from "@/components/floating-background";
 import { auth } from "@/auth";
 import { AuthSessionProvider } from "@/components/auth/session-provider";
 import { RouteLoading } from "@/components/loading/route-loading";
+import { PageReveal } from "@/components/loading/page-reveal";
+import { Analytics } from "@vercel/analytics/next";
 
 const sans = Be_Vietnam_Pro({ 
   subsets: ["latin", "vietnamese"], 
@@ -53,7 +55,9 @@ export default async function RootLayout({
             <FloatingBackground />
             <Navbar user={session?.user} />
             <RouteLoading />
-            <main className="min-h-screen">{children}</main>
+            <main className="min-h-screen">
+              <PageReveal>{children}</PageReveal>
+            </main>
             <Footer />
             <Toaster
               position="top-right"
@@ -63,6 +67,7 @@ export default async function RootLayout({
               }}
             />
           </AuthSessionProvider>
+          <Analytics />
         </ThemeProvider>
       </body>
     </html>

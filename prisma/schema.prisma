@@ -64,6 +64,7 @@ model User {
   notes          Note[]
   grammarReactions GrammarReaction[]
   grammarSaves     GrammarSave[]
+  translationHistories TranslationHistory[]
 }
 
 model Account {
@@ -182,6 +183,23 @@ model GrammarSave {
 
   @@unique([grammarId, userId])
   @@index([userId])
+}
+
+model TranslationHistory {
+  id            String   @id @default(cuid())
+  userId        String
+  sourceText    String
+  kanaReading   String?
+  romaji        String?
+  translationVi String
+  grammarJson   Json?
+  ocrText       String?
+  notes         Json?
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 model VocabNote {

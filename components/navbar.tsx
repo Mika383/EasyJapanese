@@ -34,6 +34,7 @@ export function Navbar({ user }: NavbarProps) {
         {/* Desktop Nav */}
         <div className="hidden md:flex items-center gap-8">
           <NavLink href="/alphabet" icon={<BookOpen className="h-4 w-4" />} label="Bảng chữ cái" active={pathname.startsWith("/alphabet")} />
+          <NavLink href="/translate" icon={<Languages className="h-4 w-4" />} label="Dịch thuật" active={pathname.startsWith("/translate")} />
           <NavLink href="/writing" icon={<PenTool className="h-4 w-4" />} label="Luyện viết" active={pathname.startsWith("/writing")} />
           <NavLink href="/dictation" icon={<Mic2 className="h-4 w-4" />} label="Luyện nghe" active={pathname.startsWith("/dictation")} />
           <NavLink href="/notes" icon={<Edit3 className="h-4 w-4" />} label="Ghi chú" active={pathname.startsWith("/notes")} />
@@ -42,7 +43,9 @@ export function Navbar({ user }: NavbarProps) {
         <div className="flex items-center gap-2 md:gap-4">
           <ThemeToggle />
           {currentUser ? (
-            <NavbarUser name={currentUser.name} email={currentUser.email} />
+            <div className="hidden md:block">
+              <NavbarUser name={currentUser.name} email={currentUser.email} />
+            </div>
           ) : pathname !== "/login" ? (
             <Link
               href="/login"
@@ -67,6 +70,7 @@ export function Navbar({ user }: NavbarProps) {
         <div className="md:hidden border-t bg-background p-4 animate-in slide-in-from-top duration-300">
           <div className="flex flex-col gap-4">
             <MobileNavLink href="/alphabet" icon={<BookOpen className="h-5 w-5" />} label="Bảng chữ cái" onClick={() => setIsMenuOpen(false)} active={pathname.startsWith("/alphabet")} />
+            <MobileNavLink href="/translate" icon={<Languages className="h-5 w-5" />} label="Dịch thuật" onClick={() => setIsMenuOpen(false)} active={pathname.startsWith("/translate")} />
             <MobileNavLink href="/writing" icon={<PenTool className="h-5 w-5" />} label="Luyện viết" onClick={() => setIsMenuOpen(false)} active={pathname.startsWith("/writing")} />
             <MobileNavLink href="/dictation" icon={<Mic2 className="h-5 w-5" />} label="Luyện nghe" onClick={() => setIsMenuOpen(false)} active={pathname.startsWith("/dictation")} />
             <MobileNavLink href="/notes" icon={<Edit3 className="h-5 w-5" />} label="Ghi chú" onClick={() => setIsMenuOpen(false)} active={pathname.startsWith("/notes")} />
