@@ -4,7 +4,7 @@
 // Get a free hosted Postgres database in seconds: `npx create-db`
 
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
   engineType = "library"
 }
 
@@ -48,38 +48,39 @@ enum PartOfSpeech {
 
 // Auth (NextAuth.js)
 model User {
-  id             String    @id @default(cuid())
-  name           String?
-  email          String?   @unique
-  emailVerified  DateTime?
-  image          String?
-  passwordHash   String?
-  role           UserRole  @default(STUDENT)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  deletedAt      DateTime?
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String?
+  role          UserRole  @default(STUDENT)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
 
-  accounts       Account[]
-  sessions       Session[]
-  notes          Note[]
-  grammarReactions GrammarReaction[]
-  grammarSaves     GrammarSave[]
+  accounts             Account[]
+  sessions             Session[]
+  notes                Note[]
+  grammarReactions     GrammarReaction[]
+  grammarSaves         GrammarSave[]
   translationHistories TranslationHistory[]
+  grammarExplainUsages GrammarExplainUsage[]
 }
 
 model Account {
-  id                 String   @id @default(cuid())
-  userId             String
-  type               String
-  provider           String
-  providerAccountId  String
-  refresh_token      String?
-  access_token       String?
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String?
-  session_state      String?
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -114,9 +115,9 @@ model Note {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  grammar   GrammarNote?
-  vocab     VocabNote?
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  grammar GrammarNote?
+  vocab   VocabNote?
 
   @@index([userId, updatedAt])
 }
@@ -134,7 +135,7 @@ model GrammarNote {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  note      Note      @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  note      Note              @relation(fields: [noteId], references: [id], onDelete: Cascade)
   examples  GrammarExample[]
   reactions GrammarReaction[]
   saves     GrammarSave[]
@@ -149,7 +150,7 @@ model GrammarExample {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  grammar   GrammarNote @relation(fields: [grammarId], references: [id], onDelete: Cascade)
+  grammar GrammarNote @relation(fields: [grammarId], references: [id], onDelete: Cascade)
 
   @@index([grammarId])
 }
@@ -163,23 +164,23 @@ model GrammarReaction {
   updatedAt DateTime     @updatedAt
   deletedAt DateTime?
 
-  grammar   GrammarNote  @relation(fields: [grammarId], references: [id], onDelete: Cascade)
-  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  grammar GrammarNote @relation(fields: [grammarId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([grammarId, userId])
   @@index([userId, type])
 }
 
 model GrammarSave {
-  id        String      @id @default(cuid())
+  id        String    @id @default(cuid())
   grammarId String
   userId    String
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  grammar   GrammarNote @relation(fields: [grammarId], references: [id], onDelete: Cascade)
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  grammar GrammarNote @relation(fields: [grammarId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([grammarId, userId])
   @@index([userId])
@@ -202,9 +203,23 @@ model TranslationHistory {
   @@index([userId, createdAt])
 }
 
+model GrammarExplainUsage {
+  id          String   @id @default(cuid())
+  userId      String
+  periodStart DateTime
+  count       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, periodStart])
+  @@index([userId, periodStart])
+}
+
 model VocabNote {
-  id           String          @id @default(cuid())
-  noteId       String          @unique
+  id           String         @id @default(cuid())
+  noteId       String         @unique
   scriptType   WordScriptType
   partOfSpeech PartOfSpeech
   kanji        String?
@@ -212,11 +227,11 @@ model VocabNote {
   katakana     String?
   reading      String?
   meaning      String
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
   deletedAt    DateTime?
 
-  note         Note            @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  note Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
 
   @@index([scriptType, partOfSpeech])
 }

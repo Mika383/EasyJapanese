@@ -14,6 +14,8 @@ interface TranslateFormProps {
   onIncludeGrammarChange: (value: boolean) => void
   includeKana: boolean
   onIncludeKanaChange: (value: boolean) => void
+  canUseGrammar: boolean
+  onLockedFeature: () => void
   imagePreview?: string | null
   onImageSelect: (file: File | null) => void
   onTranslate: () => void
@@ -28,6 +30,8 @@ export function TranslateForm({
   onIncludeGrammarChange,
   includeKana,
   onIncludeKanaChange,
+  canUseGrammar,
+  onLockedFeature,
   imagePreview,
   onImageSelect,
   onTranslate,
@@ -84,12 +88,20 @@ export function TranslateForm({
 
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-4">
-          <label className="flex items-center gap-3 text-sm font-medium">
+          <label
+            className="flex items-center gap-3 text-sm font-medium"
+            onClick={() => {
+              if (!canUseGrammar) onLockedFeature()
+            }}
+          >
             <Checkbox
               checked={includeGrammar}
               onCheckedChange={(value) => onIncludeGrammarChange(Boolean(value))}
+              disabled={!canUseGrammar}
             />
-            <span>Giải thích ngữ pháp (tuỳ chọn)</span>
+            <span className={!canUseGrammar ? "text-muted-foreground" : undefined}>
+              Giải thích ngữ pháp (tuỳ chọn)
+            </span>
           </label>
           <label className="flex items-center gap-3 text-sm font-medium">
             <Checkbox
