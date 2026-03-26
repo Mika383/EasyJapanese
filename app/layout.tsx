@@ -11,6 +11,7 @@ import { AuthSessionProvider } from "@/components/auth/session-provider";
 import { RouteLoading } from "@/components/loading/route-loading";
 import { PageReveal } from "@/components/loading/page-reveal";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const sans = Be_Vietnam_Pro({ 
   subsets: ["latin", "vietnamese"], 
@@ -68,6 +69,7 @@ export default async function RootLayout({
             />
           </AuthSessionProvider>
           <Analytics />
+          <SpeedInsights />
         </ThemeProvider>
       </body>
     </html>
