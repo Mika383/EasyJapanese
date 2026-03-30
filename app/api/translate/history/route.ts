@@ -28,7 +28,7 @@ export async function GET() {
     })
 
     return NextResponse.json({
-      data: history.map((item) => ({
+      data: history.map((item: typeof history[0]) => ({
         ...item,
         createdAt: item.createdAt.toISOString(),
       })),
