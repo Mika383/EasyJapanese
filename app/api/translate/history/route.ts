@@ -22,7 +22,8 @@ export async function GET() {
       select: {
         id: true,
         sourceText: true,
-        translationVi: true,
+        translationText: true,
+        targetLang: true,
         createdAt: true,
       },
     })

@@ -18,7 +18,9 @@ export type TranslateResult = {
   sourceText: string
   kanaReading: string
   romaji?: string
-  translationVi: string
+  translationText: string
+  sourceLang: "JA" | "VI"
+  targetLang: "JA" | "VI"
   grammarPoints: GrammarPoint[]
   ocrText?: string
   notes?: string[]
@@ -29,6 +31,8 @@ type TranslateInput = {
   image?: GeminiImageInput
   includeGrammar: boolean
   includeKana: boolean
+  sourceLang: "JA" | "VI"
+  targetLang: "JA" | "VI"
 }
 
 type GeminiContentPart =
@@ -54,8 +58,8 @@ const buildUserPrompt = (input: TranslateInput) => {
   const base = [
     "Nhiệm vụ:",
     "1) Nếu có ảnh, hãy OCR tiếng Nhật trong ảnh và điền vào sourceText + ocrText.",
-    "2) Dịch sang tiếng Việt.",
-    "3) Nếu includeGrammar=true, phân tích ngữ pháp ngắn gọn theo từng điểm, có ví dụ JP + nghĩa.",
+    `2) Dịch từ ${input.sourceLang} sang ${input.targetLang}.`,
+    "3) Nếu includeGrammar=true, phân tích ngữ pháp tiếng Nhật ngắn gọn theo từng điểm, có ví dụ JP + nghĩa.",
   ]
 
   const grammarLine = input.includeGrammar
@@ -75,7 +79,9 @@ const buildSchema = () => ({
     sourceText: { type: "STRING" },
     kanaReading: { type: "STRING" },
     romaji: { type: "STRING" },
-    translationVi: { type: "STRING" },
+    translationText: { type: "STRING" },
+    sourceLang: { type: "STRING" },
+    targetLang: { type: "STRING" },
     grammarPoints: {
       type: "ARRAY",
       items: {
@@ -101,8 +107,15 @@ const buildSchema = () => ({
     ocrText: { type: "STRING" },
     notes: { type: "ARRAY", items: { type: "STRING" } },
   },
-  required: ["sourceText", "kanaReading", "translationVi", "grammarPoints"],
+  required: ["sourceText", "translationText", "sourceLang", "targetLang", "grammarPoints"],
 })
+
+const normalizeLang = (value: string | undefined, fallback: "JA" | "VI") => {
+  if (!value) return fallback
+  const upper = value.toUpperCase()
+  if (upper === "JA" || upper === "VI") return upper
+  return fallback
+}
 
 export async function generateTranslation(input: TranslateInput): Promise<TranslateResult> {
   const apiKey = process.env.GEMINI_API_KEY
@@ -175,7 +188,9 @@ export async function generateTranslation(input: TranslateInput): Promise<Transl
     sourceText: parsed.sourceText ?? "",
     kanaReading,
     romaji: parsed.romaji,
-    translationVi: parsed.translationVi ?? "",
+    translationText: parsed.translationText ?? "",
+    sourceLang: normalizeLang(parsed.sourceLang, input.sourceLang),
+    targetLang: normalizeLang(parsed.targetLang, input.targetLang),
     grammarPoints,
     ocrText: parsed.ocrText,
     notes: parsed.notes ?? [],

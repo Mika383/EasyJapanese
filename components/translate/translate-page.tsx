@@ -7,6 +7,7 @@ import { Trash2 } from "lucide-react"
 import { TranslateTabs, type TranslateMode } from "@/components/translate/translate-tabs"
 import { TranslateForm } from "@/components/translate/translate-form"
 import { TranslateResult } from "@/components/translate/translate-result"
+import { Button } from "@/components/ui/button"
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -25,7 +26,8 @@ const MAX_IMAGE_SIZE_MB = 5
 type TranslationHistoryItem = {
   id: string
   sourceText: string
-  translationVi: string
+  translationText: string
+  targetLang: "JA" | "VI"
   createdAt: string
 }
 
@@ -54,6 +56,7 @@ export function TranslatePage() {
   const { data: session } = useSession()
   const isAuthenticated = Boolean(session?.user?.id)
   const [mode, setMode] = useState<TranslateMode>("text")
+  const [direction, setDirection] = useState<"JA_VI" | "VI_JA">("JA_VI")
   const [textValue, setTextValue] = useState("")
   const [includeGrammar, setIncludeGrammar] = useState(false)
   const [includeKana, setIncludeKana] = useState(true)
@@ -72,6 +75,9 @@ export function TranslatePage() {
   const [usage, setUsage] = useState<UsageInfo | null>(null)
   const [usageLoading, setUsageLoading] = useState(false)
 
+  const sourceLang = direction === "JA_VI" ? "JA" : "VI"
+  const targetLang = direction === "JA_VI" ? "VI" : "JA"
+
   const canSave = useMemo(() => Boolean(session?.user?.id && result), [session?.user?.id, result])
   const canUseGrammar = useMemo(() => {
     if (!isAuthenticated) return false
@@ -89,7 +95,18 @@ export function TranslatePage() {
       setMode("text")
       toast.info("Dịch ảnh chỉ dành cho thành viên đã đăng nhập.")
     }
-  }, [isAuthenticated, mode])
+    if (sourceLang === "VI" && mode === "image") {
+      setMode("text")
+      toast.info("Dịch ảnh chỉ hỗ trợ tiếng Nhật.")
+    }
+  }, [isAuthenticated, mode, sourceLang])
+
+  useEffect(() => {
+    resetResultState()
+    setMode("text")
+    setImagePreview(null)
+    setImagePayload(null)
+  }, [direction, resetResultState])
 
   const fetchHistory = useCallback(async () => {
     if (!isAuthenticated) {
@@ -245,8 +262,8 @@ export function TranslatePage() {
       }
       const payload =
         mode === "text"
-          ? { text: textValue, includeGrammar, includeKana }
-          : { image: imagePayload, includeGrammar, includeKana }
+          ? { text: textValue, includeGrammar, includeKana, sourceLang, targetLang }
+          : { image: imagePayload, includeGrammar, includeKana, sourceLang, targetLang }
 
       if (mode === "text" && !textValue.trim()) {
         toast.error("Vui lòng nhập văn bản cần dịch.", { id: toastId })
@@ -295,12 +312,22 @@ export function TranslatePage() {
     isAuthenticated,
     mode,
     resetResultState,
+    sourceLang,
+    targetLang,
     textValue,
   ])
 
   const handleLockedFeature = useCallback(() => {
-    toast.info("Vui lòng đăng nhập để sử dụng chức năng này.")
-  }, [])
+    if (!isAuthenticated) {
+      toast.info("Vui lòng đăng nhập để sử dụng chức năng này.")
+      return
+    }
+    if (sourceLang === "VI") {
+      toast.info("Dịch ảnh hiện chỉ hỗ trợ tiếng Nhật.")
+      return
+    }
+    toast.info("Chức năng hiện chưa khả dụng.")
+  }, [isAuthenticated, sourceLang])
 
   const handleLockedSave = useCallback(() => {
     toast.info("Vui lòng đăng nhập để lưu bản dịch.")
@@ -339,7 +366,9 @@ export function TranslatePage() {
           sourceText: result.sourceText,
           kanaReading: result.kanaReading,
           romaji: result.romaji,
-          translationVi: result.translationVi,
+          translationText: result.translationText,
+          sourceLang: result.sourceLang,
+          targetLang: result.targetLang,
           grammarPoints: result.grammarPoints,
           ocrText: result.ocrText,
           notes: result.notes,
@@ -376,10 +405,29 @@ export function TranslatePage() {
         </p>
       </header>
 
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant={direction === "JA_VI" ? "default" : "outline"}
+          className="min-w-[160px] font-semibold"
+          onClick={() => setDirection("JA_VI")}
+        >
+          Nhật → Việt
+        </Button>
+        <Button
+          type="button"
+          variant={direction === "VI_JA" ? "default" : "outline"}
+          className="min-w-[160px] font-semibold"
+          onClick={() => setDirection("VI_JA")}
+        >
+          Việt → Nhật
+        </Button>
+      </div>
+
       <TranslateTabs
         mode={mode}
         onChange={handleModeChange}
-        canUseImage={isAuthenticated}
+        canUseImage={isAuthenticated && sourceLang === "JA"}
         onLockedFeature={handleLockedFeature}
       />
       {!isAuthenticated ? (
@@ -412,6 +460,7 @@ export function TranslatePage() {
         <div className="rounded-md border bg-background p-6">
           <TranslateForm
             mode={mode}
+            sourceLang={sourceLang}
             textValue={textValue}
             onTextChange={setTextValue}
             includeGrammar={includeGrammar}
@@ -471,8 +520,12 @@ export function TranslatePage() {
                       {new Date(item.createdAt).toLocaleString("vi-VN")}
                     </p>
                     <div>
-                      <p className="text-sm font-semibold">Nhật: {item.sourceText}</p>
-                      <p className="mt-1 text-sm text-muted-foreground">Việt: {item.translationVi}</p>
+                      <p className="text-sm font-semibold">
+                        {item.targetLang === "JA" ? "Việt" : "Nhật"}: {item.sourceText}
+                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {item.targetLang === "JA" ? "Nhật" : "Việt"}: {item.translationText}
+                      </p>
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <button
@@ -539,8 +592,10 @@ export function TranslatePage() {
                       </div>
                     ) : null}
                     <div>
-                      <p className="font-semibold">Bản dịch tiếng Việt</p>
-                      <p className="mt-1 whitespace-pre-wrap">{selectedHistory.translationVi}</p>
+                      <p className="font-semibold">
+                        {selectedHistory.targetLang === "JA" ? "Bản dịch tiếng Nhật" : "Bản dịch tiếng Việt"}
+                      </p>
+                      <p className="mt-1 whitespace-pre-wrap">{selectedHistory.translationText}</p>
                     </div>
                     {selectedHistory.ocrText ? (
                       <div>

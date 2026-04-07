@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator"
 
 interface TranslateFormProps {
   mode: "text" | "image"
+  sourceLang: "JA" | "VI"
   textValue: string
   onTextChange: (value: string) => void
   includeGrammar: boolean
@@ -24,6 +25,7 @@ interface TranslateFormProps {
 
 export function TranslateForm({
   mode,
+  sourceLang,
   textValue,
   onTextChange,
   includeGrammar,
@@ -42,13 +44,17 @@ export function TranslateForm({
       {mode === "text" ? (
         <div className="space-y-3">
           <Label htmlFor="jp-text" className="text-sm font-semibold">
-            Nhập văn bản tiếng Nhật
+            {sourceLang === "JA" ? "Nhập văn bản tiếng Nhật" : "Nhập văn bản tiếng Việt"}
           </Label>
           <textarea
             id="jp-text"
             value={textValue}
             onChange={(event) => onTextChange(event.target.value)}
-            placeholder="Ví dụ: 日本語の文章を入力してください"
+            placeholder={
+              sourceLang === "JA"
+                ? "Ví dụ: 日本語の文章を入力してください"
+                : "Ví dụ: Hôm nay tôi muốn học tiếng Nhật."
+            }
             className="min-h-[160px] w-full rounded-md border bg-background px-3 py-2 text-sm leading-relaxed outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>

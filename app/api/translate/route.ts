@@ -13,6 +13,8 @@ type TranslateRequest = {
   }
   includeGrammar?: boolean
   includeKana?: boolean
+  sourceLang?: "JA" | "VI"
+  targetLang?: "JA" | "VI"
 }
 
 const GRAMMAR_LIMIT_STUDENT = Number(process.env.GRAMMAR_DAILY_LIMIT ?? 10)
@@ -58,6 +60,8 @@ export async function POST(req: Request) {
     const image = body.image
     const includeGrammar = body.includeGrammar ?? false
     const includeKana = body.includeKana ?? true
+    const sourceLang = body.sourceLang ?? "JA"
+    const targetLang = body.targetLang ?? "VI"
 
     if (!userId && (image || includeGrammar)) {
       return NextResponse.json(
@@ -131,6 +135,8 @@ export async function POST(req: Request) {
       image: image?.data ? image : undefined,
       includeGrammar,
       includeKana,
+      sourceLang,
+      targetLang,
     })
 
     return NextResponse.json({ data: result })

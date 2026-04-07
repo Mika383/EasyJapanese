@@ -116,8 +116,10 @@ export function TranslateResult({
         ) : null}
 
         <div>
-          <p className="font-semibold">Bản dịch tiếng Việt</p>
-          <p className="mt-1 whitespace-pre-wrap">{result.translationVi}</p>
+          <p className="font-semibold">
+            {result.targetLang === "JA" ? "Bản dịch tiếng Nhật" : "Bản dịch tiếng Việt"}
+          </p>
+          <p className="mt-1 whitespace-pre-wrap">{result.translationText}</p>
         </div>
 
         {result.ocrText ? (

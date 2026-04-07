@@ -9,7 +9,9 @@ type SaveRequest = {
   sourceText: string
   kanaReading?: string
   romaji?: string
-  translationVi: string
+  translationText: string
+  sourceLang?: "JA" | "VI"
+  targetLang?: "JA" | "VI"
   grammarPoints?: unknown
   ocrText?: string
   notes?: unknown
@@ -42,12 +44,20 @@ export async function POST(req: Request) {
 
     const body = (await req.json()) as SaveRequest
     const sourceText = body.sourceText?.trim()
-    const translationVi = body.translationVi?.trim()
+    const translationText = body.translationText?.trim()
+    const normalizeLang = (value: string | undefined, fallback: "JA" | "VI") => {
+      if (!value) return fallback
+      const upper = value.toUpperCase()
+      if (upper === "JA" || upper === "VI") return upper
+      return fallback
+    }
+    const sourceLang = normalizeLang(body.sourceLang, "JA")
+    const targetLang = normalizeLang(body.targetLang, "VI")
 
-    if (!sourceText || !translationVi) {
+    if (!sourceText || !translationText) {
       return errorResponse(400, "Thiếu dữ liệu cần lưu.", {
         sourceText: sourceText ? "" : "missing",
-        translationVi: translationVi ? "" : "missing",
+        translationText: translationText ? "" : "missing",
       })
     }
 
@@ -73,7 +83,9 @@ export async function POST(req: Request) {
         sourceText,
         kanaReading: body.kanaReading?.trim() || null,
         romaji: body.romaji?.trim() || null,
-        translationVi,
+        translationText,
+        sourceLang,
+        targetLang,
         grammarJson:
           body.grammarPoints == null
             ? undefined

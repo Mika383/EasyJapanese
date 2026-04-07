@@ -46,6 +46,11 @@ enum PartOfSpeech {
   OTHER
 }
 
+enum LanguageCode {
+  JA
+  VI
+}
+
 // Auth (NextAuth.js)
 model User {
   id            String    @id @default(cuid())
@@ -192,7 +197,9 @@ model TranslationHistory {
   sourceText    String
   kanaReading   String?
   romaji        String?
-  translationVi String
+  translationText String
+  sourceLang    LanguageCode @default(JA)
+  targetLang    LanguageCode @default(VI)
   grammarJson   Json?
   ocrText       String?
   notes         Json?
