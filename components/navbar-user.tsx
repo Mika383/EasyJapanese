@@ -1,7 +1,8 @@
 "use client"
 
 import { useTransition } from "react"
-import { LogOut, User } from "lucide-react"
+import Link from "next/link"
+import { LogOut, Settings, User } from "lucide-react"
 import { signOut } from "next-auth/react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -17,11 +18,13 @@ import {
 interface NavbarUserProps {
   name?: string | null
   email?: string | null
+  role?: string | null
 }
 
-export function NavbarUser({ name, email }: NavbarUserProps) {
+export function NavbarUser({ name, email, role }: NavbarUserProps) {
   const [isPending, startTransition] = useTransition()
   const displayName = name || email || "Tài khoản"
+  const isAdmin = role === "ADMIN"
 
   const handleLogout = () => {
     startTransition(async () => {
@@ -50,10 +53,19 @@ export function NavbarUser({ name, email }: NavbarUserProps) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>Tài khoản</DropdownMenuLabel>
-        <div className="px-3 pb-2 text-xs text-muted-foreground">
-          {displayName}
-        </div>
+        <div className="px-3 pb-2 text-xs text-muted-foreground">{displayName}</div>
         <DropdownMenuSeparator />
+        {isAdmin ? (
+          <>
+            <DropdownMenuItem asChild>
+              <Link href="/admin/settings">
+                <Settings className="h-4 w-4" />
+                Settings
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        ) : null}
         <DropdownMenuItem onClick={handleLogout} disabled={isPending} className="text-destructive">
           <LogOut className="h-4 w-4" />
           Đăng xuất

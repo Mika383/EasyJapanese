@@ -12,6 +12,7 @@ interface NavbarProps {
   user?: {
     name?: string | null
     email?: string | null
+    role?: string | null
   } | null
 }
 
@@ -44,7 +45,7 @@ export function Navbar({ user }: NavbarProps) {
           <ThemeToggle />
           {currentUser ? (
             <div className="hidden md:block">
-              <NavbarUser name={currentUser.name} email={currentUser.email} />
+              <NavbarUser name={currentUser.name} email={currentUser.email} role={currentUser.role} />
             </div>
           ) : pathname !== "/login" ? (
             <Link
@@ -76,7 +77,7 @@ export function Navbar({ user }: NavbarProps) {
             <MobileNavLink href="/notes" icon={<Edit3 className="h-5 w-5" />} label="Ghi chú" onClick={() => setIsMenuOpen(false)} active={pathname.startsWith("/notes")} />
             {currentUser ? (
               <div className="mt-4">
-                <NavbarUser name={currentUser.name} email={currentUser.email} />
+                <NavbarUser name={currentUser.name} email={currentUser.email} role={currentUser.role} />
               </div>
             ) : pathname !== "/login" ? (
               <Link

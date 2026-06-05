@@ -1,16 +1,22 @@
 import { NextResponse } from "next/server"
-import { auth } from "@/auth"
-import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
+import { auth } from "@/auth"
+import { getAppLimitSettings } from "@/lib/app-settings"
+import { prisma } from "@/lib/prisma"
+import type { JlptLevel, TranslationDirection, TranslationStyle } from "@/lib/translate-types"
 
 export const runtime = "nodejs"
 
 type SaveRequest = {
+  direction?: TranslationDirection
   sourceText: string
   kanaReading?: string
   romaji?: string
   translationVi: string
+  jlptLevel?: JlptLevel
+  translationStyle?: TranslationStyle
   grammarPoints?: unknown
+  kanjiExplanations?: unknown
   ocrText?: string
   notes?: unknown
 }
@@ -31,6 +37,7 @@ export async function POST(req: Request) {
   try {
     const session = await auth()
     const userId = session?.user?.id
+    const role = session?.user?.role ?? "STUDENT"
     if (!userId) {
       return NextResponse.json(
         {
@@ -51,33 +58,43 @@ export async function POST(req: Request) {
       })
     }
 
-    const currentCount = await prisma.translationHistory.count({
-      where: { userId },
-    })
+    if (role !== "ADMIN") {
+      const settings = await getAppLimitSettings()
+      const currentCount = await prisma.translationHistory.count({
+        where: { userId },
+      })
 
-    if (currentCount >= 10) {
-      return NextResponse.json(
-        {
-          error: {
-            code: "LIMIT_REACHED",
-            message: "Bạn chỉ có thể lưu tối đa 10 bản dịch.",
+      if (currentCount >= settings.savedTranslationLimit) {
+        return NextResponse.json(
+          {
+            error: {
+              code: "LIMIT_REACHED",
+              message: `Bạn chỉ có thể lưu tối đa ${settings.savedTranslationLimit} bản dịch.`,
+            },
           },
-        },
-        { status: 409 }
-      )
+          { status: 409 }
+        )
+      }
     }
 
     const saved = await prisma.translationHistory.create({
       data: {
+        direction: body.direction ?? "JP_TO_VI",
         userId,
         sourceText,
         kanaReading: body.kanaReading?.trim() || null,
         romaji: body.romaji?.trim() || null,
         translationVi,
+        jlptLevel: body.jlptLevel ?? null,
+        translationStyle: body.translationStyle ?? null,
         grammarJson:
           body.grammarPoints == null
             ? undefined
             : (body.grammarPoints as Prisma.InputJsonValue),
+        kanjiJson:
+          body.kanjiExplanations == null
+            ? undefined
+            : (body.kanjiExplanations as Prisma.InputJsonValue),
         ocrText: body.ocrText?.trim() || null,
         notes: body.notes == null ? undefined : (body.notes as Prisma.InputJsonValue),
       },

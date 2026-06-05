@@ -21,8 +21,11 @@ export async function GET() {
       take: 10,
       select: {
         id: true,
+        direction: true,
         sourceText: true,
         translationVi: true,
+        jlptLevel: true,
+        translationStyle: true,
         createdAt: true,
       },
     })
