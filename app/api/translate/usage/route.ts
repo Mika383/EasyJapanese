@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { getAppLimitSettings } from "@/lib/app-settings"
 
 export const runtime = "nodejs"
 
-const GRAMMAR_LIMIT_STUDENT = Number(process.env.GRAMMAR_DAILY_LIMIT ?? 10)
 const VN_OFFSET_MS = 7 * 60 * 60 * 1000
 
 const getVietnamPeriodStart = (now: Date) => {
@@ -37,13 +37,22 @@ export async function GET() {
       )
     }
 
+    const settings = await getAppLimitSettings()
     const savedCount = await prisma.translationHistory.count({ where: { userId } })
-    const savedLimit = 10
+
+    if (role === "ADMIN") {
+      return NextResponse.json({
+        data: {
+          saved: { count: savedCount, limit: null },
+          grammar: { used: 0, limit: null, remaining: null },
+        },
+      })
+    }
 
     if (role !== "STUDENT") {
       return NextResponse.json({
         data: {
-          saved: { count: savedCount, limit: savedLimit },
+          saved: { count: savedCount, limit: settings.savedTranslationLimit },
           grammar: { used: 0, limit: null, remaining: null },
         },
       })
@@ -75,15 +84,15 @@ export async function GET() {
       select: { count: true },
     })
     const used = usage?.count ?? 0
-    const remaining = Math.max(GRAMMAR_LIMIT_STUDENT - used, 0)
+    const remaining = Math.max(settings.grammarDailyLimit - used, 0)
     const periodEnd = new Date(periodStart.getTime() + 24 * 60 * 60 * 1000)
 
     return NextResponse.json({
       data: {
-        saved: { count: savedCount, limit: savedLimit },
+        saved: { count: savedCount, limit: settings.savedTranslationLimit },
         grammar: {
           used,
-          limit: GRAMMAR_LIMIT_STUDENT,
+          limit: settings.grammarDailyLimit,
           remaining,
           periodStart: periodStart.toISOString(),
           periodEnd: periodEnd.toISOString(),

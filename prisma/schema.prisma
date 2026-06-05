@@ -65,6 +65,7 @@ model User {
   grammarReactions     GrammarReaction[]
   grammarSaves         GrammarSave[]
   translationHistories TranslationHistory[]
+  conversationTranslationHistories ConversationTranslationHistory[]
   grammarExplainUsages GrammarExplainUsage[]
 }
 
@@ -189,14 +190,35 @@ model GrammarSave {
 model TranslationHistory {
   id            String   @id @default(cuid())
   userId        String
+  direction     String   @default("JP_TO_VI")
   sourceText    String
   kanaReading   String?
   romaji        String?
   translationVi String
+  jlptLevel     String?
+  translationStyle String?
   grammarJson   Json?
+  kanjiJson     Json?
   ocrText       String?
   notes         Json?
   createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model ConversationTranslationHistory {
+  id               String   @id @default(cuid())
+  userId           String
+  direction        String   @default("JP_TO_VI")
+  title            String?
+  participantsJson Json
+  linesJson        Json
+  resultJson       Json
+  jlptLevel        String?
+  translationStyle String?
+  createdAt        DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -215,6 +237,13 @@ model GrammarExplainUsage {
 
   @@unique([userId, periodStart])
   @@index([userId, periodStart])
+}
+
+model AppSetting {
+  key       String   @id
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model VocabNote {

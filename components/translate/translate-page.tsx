@@ -7,6 +7,8 @@ import { Trash2 } from "lucide-react"
 import { TranslateTabs, type TranslateMode } from "@/components/translate/translate-tabs"
 import { TranslateForm } from "@/components/translate/translate-form"
 import { TranslateResult } from "@/components/translate/translate-result"
+import { TranslationAudioControls } from "@/components/translate/translation-audio-controls"
+import { ConversationTranslatePanel } from "@/components/translate/conversation-translate-panel"
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -18,28 +20,39 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from "@/components/ui/alert-dialog"
+import {
+  directionLabels,
+  sourceLanguageLabels,
+  styleLabels,
+  targetLanguageLabels,
+  type JlptLevel,
+  type TranslationDirection,
+  type TranslationWorkflow,
+  type TranslationStyle,
+} from "@/lib/translate-types"
 import type { TranslateResult as TranslateResultType } from "@/lib/gemini"
 
 const MAX_IMAGE_SIZE_MB = 5
 
 type TranslationHistoryItem = {
   id: string
+  direction: TranslationDirection
   sourceText: string
   translationVi: string
+  jlptLevel?: JlptLevel | null
+  translationStyle?: TranslationStyle | null
   createdAt: string
 }
 
 type TranslationDetail = TranslateResultType & {
   id: string
   createdAt: string
-  grammarPoints?: TranslateResultType["grammarPoints"]
-  notes?: string[]
 }
 
 type UsageInfo = {
   saved: {
     count: number
-    limit: number
+    limit: number | null
   }
   grammar: {
     used: number
@@ -53,10 +66,15 @@ type UsageInfo = {
 export function TranslatePage() {
   const { data: session } = useSession()
   const isAuthenticated = Boolean(session?.user?.id)
+  const [workflow, setWorkflow] = useState<TranslationWorkflow>("single")
   const [mode, setMode] = useState<TranslateMode>("text")
+  const [direction, setDirection] = useState<TranslationDirection>("JP_TO_VI")
   const [textValue, setTextValue] = useState("")
+  const [jlptLevel, setJlptLevel] = useState<JlptLevel>("N5")
+  const [translationStyle, setTranslationStyle] = useState<TranslationStyle>("STRUCTURED")
   const [includeGrammar, setIncludeGrammar] = useState(false)
   const [includeKana, setIncludeKana] = useState(true)
+  const [includeKanji, setIncludeKanji] = useState(false)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [imagePayload, setImagePayload] = useState<{ data: string; mimeType: string } | null>(null)
   const [result, setResult] = useState<TranslateResultType | null>(null)
@@ -84,13 +102,6 @@ export function TranslatePage() {
     setError(null)
   }, [])
 
-  useEffect(() => {
-    if (!isAuthenticated && mode === "image") {
-      setMode("text")
-      toast.info("Dịch ảnh chỉ dành cho thành viên đã đăng nhập.")
-    }
-  }, [isAuthenticated, mode])
-
   const fetchHistory = useCallback(async () => {
     if (!isAuthenticated) {
       setHistory([])
@@ -104,12 +115,14 @@ export function TranslatePage() {
       if (!response.ok) {
         const message = data?.error?.message || "Không thể tải lịch sử dịch."
         setHistoryError(message)
+        toast.error(message)
         return
       }
       setHistory(data.data ?? [])
     } catch (err) {
       const message = err instanceof Error ? err.message : "Đã xảy ra lỗi."
       setHistoryError(message)
+      toast.error(message)
     } finally {
       setIsHistoryLoading(false)
     }
@@ -127,59 +140,29 @@ export function TranslatePage() {
       if (response.ok) {
         setUsage(data.data ?? null)
       }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Không thể tải giới hạn sử dụng."
+      toast.error(message)
     } finally {
       setUsageLoading(false)
     }
   }, [isAuthenticated])
 
-  const handleDeleteHistory = useCallback(
-    async (id: string) => {
-      const toastId = `history-delete-${id}`
-      toast.loading("Đang xoá bản dịch...", { id: toastId })
-      try {
-        const response = await fetch(`/api/translate/history/${id}`, {
-          method: "DELETE",
-        })
-        const data = await response.json()
-        if (!response.ok) {
-          const message = data?.error?.message || "Không thể xoá bản dịch."
-          toast.error(message, { id: toastId })
-          return
-        }
-        toast.success("Đã xoá bản dịch.", { id: toastId })
-        fetchHistory()
-        fetchUsage()
-        if (selectedHistory && (selectedHistory as { id?: string }).id === id) {
-          setSelectedHistory(null)
-          setIsDetailOpen(false)
-        }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Đã xảy ra lỗi."
-        toast.error(message, { id: toastId })
-      }
-    },
-    [fetchHistory, fetchUsage, selectedHistory]
-  )
-
-  const handleViewDetail = useCallback(async (id: string) => {
-    setDetailLoading(true)
-    setIsDetailOpen(true)
-    try {
-      const response = await fetch(`/api/translate/history/${id}`)
-      const data = await response.json()
-      if (!response.ok) {
-        const message = data?.error?.message || "Không thể tải chi tiết."
-        toast.error(message)
-        return
-      }
-      setSelectedHistory(data.data)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Đã xảy ra lỗi."
-      toast.error(message)
-    } finally {
-      setDetailLoading(false)
+  useEffect(() => {
+    if (!isAuthenticated && mode === "image") {
+      setMode("text")
+      toast.info("Dịch ảnh chỉ dành cho thành viên đã đăng nhập.")
     }
-  }, [])
+  }, [isAuthenticated, mode])
+
+  useEffect(() => {
+    if (direction === "VI_TO_JP" && mode === "image") {
+      setMode("text")
+      setImagePreview(null)
+      setImagePayload(null)
+      toast.info("Dịch ảnh chỉ hỗ trợ chiều Nhật -> Việt.")
+    }
+  }, [direction, mode])
 
   useEffect(() => {
     fetchHistory()
@@ -188,6 +171,10 @@ export function TranslatePage() {
 
   const handleModeChange = useCallback(
     (nextMode: TranslateMode) => {
+      if (nextMode === "image" && direction === "VI_TO_JP") {
+        toast.info("Dịch ảnh chỉ hỗ trợ chiều Nhật -> Việt.")
+        return
+      }
       setMode(nextMode)
       resetResultState()
       if (nextMode === "text") {
@@ -195,32 +182,48 @@ export function TranslatePage() {
         setImagePayload(null)
       }
     },
-    [resetResultState]
+    [direction, resetResultState]
   )
 
-  const handleImageSelect = useCallback((file: File | null) => {
-    resetResultState()
+  const handleToggleDirection = useCallback(() => {
+    setDirection((current) => {
+      const next = current === "JP_TO_VI" ? "VI_TO_JP" : "JP_TO_VI"
+      toast.info(`Đã chuyển chiều dịch: ${directionLabels[next]}.`)
+      return next
+    })
+    setMode("text")
+    setTextValue("")
+    setImagePreview(null)
     setImagePayload(null)
-    if (!file) {
-      setImagePreview(null)
-      return
-    }
-
-    if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
-      toast.error("Ảnh vượt quá 5MB. Vui lòng chọn ảnh nhỏ hơn.")
-      return
-    }
-
-    const reader = new FileReader()
-    reader.onload = () => {
-      const resultUrl = reader.result as string
-      const [meta, base64] = resultUrl.split(",")
-      const mimeType = meta?.match(/data:(.*);base64/)?.[1] ?? file.type
-      setImagePreview(resultUrl)
-      setImagePayload({ data: base64, mimeType })
-    }
-    reader.readAsDataURL(file)
+    resetResultState()
   }, [resetResultState])
+
+  const handleImageSelect = useCallback(
+    (file: File | null) => {
+      resetResultState()
+      setImagePayload(null)
+      if (!file) {
+        setImagePreview(null)
+        return
+      }
+
+      if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
+        toast.error("Ảnh vượt quá 5MB. Vui lòng chọn ảnh nhỏ hơn.")
+        return
+      }
+
+      const reader = new FileReader()
+      reader.onload = () => {
+        const resultUrl = reader.result as string
+        const [meta, base64] = resultUrl.split(",")
+        const mimeType = meta?.match(/data:(.*);base64/)?.[1] ?? file.type
+        setImagePreview(resultUrl)
+        setImagePayload({ data: base64, mimeType })
+      }
+      reader.readAsDataURL(file)
+    },
+    [resetResultState]
+  )
 
   const handleTranslate = useCallback(async () => {
     resetResultState()
@@ -230,35 +233,47 @@ export function TranslatePage() {
 
     try {
       if (!isAuthenticated && (mode === "image" || includeGrammar)) {
-        const message = "Tính năng dịch ảnh và giải thích ngữ pháp chỉ dành cho thành viên."
+        const message = "Dịch ảnh và giải thích ngữ pháp chỉ dành cho thành viên."
         setError(message)
         toast.error(message, { id: toastId })
-        setIsLoading(false)
         return
       }
+
       if (includeGrammar && !canUseGrammar) {
         const message = "Bạn đã dùng hết lượt giải thích ngữ pháp hôm nay."
         setError(message)
         toast.error(message, { id: toastId })
-        setIsLoading(false)
         return
       }
-      const payload =
-        mode === "text"
-          ? { text: textValue, includeGrammar, includeKana }
-          : { image: imagePayload, includeGrammar, includeKana }
 
       if (mode === "text" && !textValue.trim()) {
         toast.error("Vui lòng nhập văn bản cần dịch.", { id: toastId })
-        setIsLoading(false)
         return
       }
 
       if (mode === "image" && !imagePayload) {
         toast.error("Vui lòng tải ảnh cần dịch.", { id: toastId })
-        setIsLoading(false)
         return
       }
+
+      const payload =
+        mode === "text"
+          ? {
+              text: textValue,
+              direction,
+              jlptLevel,
+              translationStyle,
+              includeGrammar,
+              includeKana,
+              includeKanji,
+            }
+          : {
+              image: imagePayload,
+              direction,
+              includeGrammar,
+              includeKana,
+              includeKanji,
+            }
 
       const response = await fetch("/api/translate", {
         method: "POST",
@@ -288,14 +303,18 @@ export function TranslatePage() {
     }
   }, [
     canUseGrammar,
+    direction,
     fetchUsage,
+    imagePayload,
     includeGrammar,
     includeKana,
-    imagePayload,
+    includeKanji,
     isAuthenticated,
+    jlptLevel,
     mode,
     resetResultState,
     textValue,
+    translationStyle,
   ])
 
   const handleLockedFeature = useCallback(() => {
@@ -306,18 +325,26 @@ export function TranslatePage() {
     toast.info("Vui lòng đăng nhập để lưu bản dịch.")
   }, [])
 
-  const handleIncludeGrammarChange = useCallback((value: boolean) => {
-    if (value && !canUseGrammar) {
-      toast.info("Bạn đã dùng hết lượt giải thích ngữ pháp hôm nay.")
-      return
-    }
-    setIncludeGrammar(value)
-    toast(value ? "Đã bật giải thích ngữ pháp." : "Đã tắt giải thích ngữ pháp.")
-  }, [canUseGrammar])
+  const handleIncludeGrammarChange = useCallback(
+    (value: boolean) => {
+      if (value && !canUseGrammar) {
+        toast.info("Bạn đã dùng hết lượt giải thích ngữ pháp hôm nay.")
+        return
+      }
+      setIncludeGrammar(value)
+      toast(value ? "Đã bật giải thích ngữ pháp." : "Đã tắt giải thích ngữ pháp.")
+    },
+    [canUseGrammar]
+  )
 
   const handleIncludeKanaChange = useCallback((value: boolean) => {
     setIncludeKana(value)
-    toast(value ? "Đã bật chú thích Hán tự." : "Đã tắt chú thích Hán tự.")
+    toast(value ? "Đã bật hiragana." : "Đã tắt hiragana.")
+  }, [])
+
+  const handleIncludeKanjiChange = useCallback((value: boolean) => {
+    setIncludeKanji(value)
+    toast(value ? "Đã bật giải thích Hán tự." : "Đã tắt giải thích Hán tự.")
   }, [])
 
   const handleSave = useCallback(async () => {
@@ -336,11 +363,15 @@ export function TranslatePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          direction: result.direction,
           sourceText: result.sourceText,
           kanaReading: result.kanaReading,
           romaji: result.romaji,
           translationVi: result.translationVi,
+          jlptLevel: result.jlptLevel,
+          translationStyle: result.translationStyle,
           grammarPoints: result.grammarPoints,
+          kanjiExplanations: result.kanjiExplanations,
           ocrText: result.ocrText,
           notes: result.notes,
         }),
@@ -364,37 +395,101 @@ export function TranslatePage() {
     }
   }, [fetchHistory, fetchUsage, result, session?.user?.id])
 
+  const handleViewDetail = useCallback(async (id: string) => {
+    setDetailLoading(true)
+    setIsDetailOpen(true)
+    try {
+      const response = await fetch(`/api/translate/history/${id}`)
+      const data = await response.json()
+      if (!response.ok) {
+        const message = data?.error?.message || "Không thể tải chi tiết."
+        toast.error(message)
+        return
+      }
+      setSelectedHistory(data.data)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Đã xảy ra lỗi."
+      toast.error(message)
+    } finally {
+      setDetailLoading(false)
+    }
+  }, [])
+
+  const handleDeleteHistory = useCallback(
+    async (id: string) => {
+      const toastId = `history-delete-${id}`
+      toast.loading("Đang xoá bản dịch...", { id: toastId })
+      try {
+        const response = await fetch(`/api/translate/history/${id}`, {
+          method: "DELETE",
+        })
+        const data = await response.json()
+        if (!response.ok) {
+          const message = data?.error?.message || "Không thể xoá bản dịch."
+          toast.error(message, { id: toastId })
+          return
+        }
+        toast.success("Đã xoá bản dịch.", { id: toastId })
+        fetchHistory()
+        fetchUsage()
+        if (selectedHistory?.id === id) {
+          setSelectedHistory(null)
+          setIsDetailOpen(false)
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Đã xảy ra lỗi."
+        toast.error(message, { id: toastId })
+      }
+    },
+    [fetchHistory, fetchUsage, selectedHistory?.id]
+  )
+
   return (
     <div className="container mx-auto space-y-8 px-4 py-10">
       <header className="space-y-2">
         <p className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-          Dịch tiếng Nhật
+          {directionLabels[direction]}
         </p>
         <h1 className="text-3xl font-bold">Dịch văn bản & hình ảnh</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
-          Dịch nhanh tiếng Nhật, có thể kèm giải thích ngữ pháp khi bạn bật tuỳ chọn.
+          Dịch Nhật - Việt hoặc Việt - Nhật, kèm Hán tự, ngữ pháp và trình độ JLPT khi cần.
         </p>
       </header>
 
       <TranslateTabs
         mode={mode}
+        workflow={workflow}
+        direction={direction}
+        onWorkflowChange={(nextWorkflow) => {
+          setWorkflow(nextWorkflow)
+          setMode("text")
+          resetResultState()
+          toast.info(nextWorkflow === "conversation" ? "Đã chuyển sang dịch hội thoại." : "Đã chuyển sang dịch đơn.")
+        }}
         onChange={handleModeChange}
-        canUseImage={isAuthenticated}
+        onToggleDirection={handleToggleDirection}
+        canUseImage={workflow === "single" && isAuthenticated && direction === "JP_TO_VI"}
         onLockedFeature={handleLockedFeature}
       />
+
       {!isAuthenticated ? (
         <p className="text-xs text-muted-foreground">
           Dịch ảnh và giải thích ngữ pháp chỉ dành cho thành viên đã đăng nhập.
         </p>
       ) : null}
+
       {isAuthenticated ? (
         <div className="rounded-md border bg-background px-4 py-3 text-sm text-muted-foreground">
           <div className="flex flex-wrap items-center gap-3">
             <span className="font-semibold text-foreground">
               Bản dịch đã lưu:{" "}
-              {usageLoading || !usage ? "..." : `${usage.saved.count}/${usage.saved.limit}`}
+              {usageLoading || !usage
+                ? "..."
+                : usage.saved.limit == null
+                  ? `${usage.saved.count}/Không giới hạn`
+                  : `${usage.saved.count}/${usage.saved.limit}`}
             </span>
-            <span className="text-muted-foreground">•</span>
+            <span className="text-muted-foreground">·</span>
             {usageLoading || !usage ? (
               <span>Đang cập nhật lượt ngữ pháp...</span>
             ) : usage.grammar.limit == null ? (
@@ -408,16 +503,26 @@ export function TranslatePage() {
         </div>
       ) : null}
 
+      {workflow === "conversation" ? (
+        <ConversationTranslatePanel direction={direction} isAuthenticated={isAuthenticated} />
+      ) : (
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="rounded-md border bg-background p-6">
           <TranslateForm
             mode={mode}
+            direction={direction}
             textValue={textValue}
             onTextChange={setTextValue}
+            jlptLevel={jlptLevel}
+            onJlptLevelChange={setJlptLevel}
+            translationStyle={translationStyle}
+            onTranslationStyleChange={setTranslationStyle}
             includeGrammar={includeGrammar}
             onIncludeGrammarChange={handleIncludeGrammarChange}
             includeKana={includeKana}
             onIncludeKanaChange={handleIncludeKanaChange}
+            includeKanji={includeKanji}
+            onIncludeKanjiChange={handleIncludeKanjiChange}
             canUseGrammar={canUseGrammar}
             onLockedFeature={handleLockedFeature}
             imagePreview={imagePreview}
@@ -436,11 +541,13 @@ export function TranslatePage() {
           canSave={canSave}
           onLockedSave={handleLockedSave}
           includeKana={includeKana}
+          includeKanji={includeKanji}
           includeGrammar={includeGrammar}
         />
       </div>
+      )}
 
-      {isAuthenticated ? (
+      {workflow === "single" && isAuthenticated ? (
         <div className="rounded-md border bg-background p-6">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="text-lg font-semibold">Bản dịch đã lưu</h2>
@@ -463,16 +570,28 @@ export function TranslatePage() {
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
                 {history.map((item) => (
-                  <div
-                    key={item.id}
-                    className="rounded-md border border-foreground/10 p-4 space-y-3"
-                  >
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(item.createdAt).toLocaleString("vi-VN")}
-                    </p>
+                  <div key={item.id} className="rounded-md border border-foreground/10 p-4 space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(item.createdAt).toLocaleString("vi-VN")}
+                      </p>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-primary">
+                        {directionLabels[item.direction]}
+                      </p>
+                    </div>
                     <div>
-                      <p className="text-sm font-semibold">Nhật: {item.sourceText}</p>
-                      <p className="mt-1 text-sm text-muted-foreground">Việt: {item.translationVi}</p>
+                      <p className="text-sm font-semibold">
+                        {sourceLanguageLabels[item.direction]}: {item.sourceText}
+                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {targetLanguageLabels[item.direction]}: {item.translationVi}
+                      </p>
+                      {item.jlptLevel ? (
+                        <p className="mt-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+                          {item.jlptLevel}
+                          {item.translationStyle ? ` · ${styleLabels[item.translationStyle]}` : ""}
+                        </p>
+                      ) : null}
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <button
@@ -512,6 +631,7 @@ export function TranslatePage() {
                   </div>
                 ))}
               </div>
+
               <div className="rounded-md border border-foreground/10 p-4">
                 <h3 className="text-sm font-semibold">Chi tiết bản dịch</h3>
                 {detailLoading ? (
@@ -521,71 +641,105 @@ export function TranslatePage() {
                     Chọn một bản dịch để xem chi tiết.
                   </p>
                 ) : (
-                  <div className="mt-4 space-y-4 text-sm">
-                    <div>
-                      <p className="font-semibold">Văn bản gốc</p>
-                      <p className="mt-1 whitespace-pre-wrap">{selectedHistory.sourceText}</p>
-                    </div>
-                    {selectedHistory.kanaReading ? (
-                      <div>
-                        <p className="font-semibold">Hiragana cho Hán tự</p>
-                        <p className="mt-1 whitespace-pre-wrap">{selectedHistory.kanaReading}</p>
-                      </div>
-                    ) : null}
-                    {selectedHistory.romaji ? (
-                      <div>
-                        <p className="font-semibold">Romaji</p>
-                        <p className="mt-1 whitespace-pre-wrap">{selectedHistory.romaji}</p>
-                      </div>
-                    ) : null}
-                    <div>
-                      <p className="font-semibold">Bản dịch tiếng Việt</p>
-                      <p className="mt-1 whitespace-pre-wrap">{selectedHistory.translationVi}</p>
-                    </div>
-                    {selectedHistory.ocrText ? (
-                      <div>
-                        <p className="font-semibold">Văn bản OCR từ ảnh</p>
-                        <p className="mt-1 whitespace-pre-wrap">{selectedHistory.ocrText}</p>
-                      </div>
-                    ) : null}
-                    {selectedHistory.grammarPoints && selectedHistory.grammarPoints.length > 0 ? (
-                      <div>
-                        <p className="font-semibold">Giải thích ngữ pháp</p>
-                        <div className="mt-3 space-y-4">
-                          {selectedHistory.grammarPoints.map((point, index) => (
-                            <div key={`${point.title}-${index}`} className="rounded-md border px-3 py-2">
-                              <p className="font-semibold">{point.title}</p>
-                              <p className="mt-1 text-muted-foreground">{point.explanation}</p>
-                              {point.examples.length > 0 ? (
-                                <div className="mt-2 space-y-2 text-muted-foreground">
-                                  {point.examples.map((example, exampleIndex) => (
-                                    <div key={`${point.title}-${exampleIndex}`}>
-                                      <p>{example.jp}</p>
-                                      <p>{example.vi}</p>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : null}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-                    {selectedHistory.notes && selectedHistory.notes.length > 0 ? (
-                      <div>
-                        <p className="font-semibold">Ghi chú thêm</p>
-                        <div className="mt-2 space-y-1 text-muted-foreground">
-                          {selectedHistory.notes.map((note, index) => (
-                            <p key={`${note}-${index}`}>{note}</p>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
+                  <TranslateHistoryDetail item={selectedHistory} />
                 )}
               </div>
             </div>
           )}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function TranslateHistoryDetail({ item }: { item: TranslationDetail }) {
+  return (
+    <div className="mt-4 space-y-4 text-sm">
+      <div>
+        <p className="font-semibold">Văn bản gốc ({sourceLanguageLabels[item.direction]})</p>
+        <p className="mt-1 whitespace-pre-wrap">{item.sourceText}</p>
+      </div>
+      <div>
+        <p className="font-semibold">Bản dịch ({targetLanguageLabels[item.direction]})</p>
+        <p className="mt-1 whitespace-pre-wrap">{item.translationVi}</p>
+      </div>
+      {item.direction === "VI_TO_JP" ? (
+        <TranslationAudioControls text={item.translationVi} />
+      ) : null}
+      {item.jlptLevel ? (
+        <div>
+          <p className="font-semibold">Tuỳ chọn dịch</p>
+          <p className="mt-1 text-muted-foreground">
+            {item.jlptLevel}
+            {item.translationStyle ? ` · ${styleLabels[item.translationStyle]}` : ""}
+          </p>
+        </div>
+      ) : null}
+      {item.kanaReading ? (
+        <div>
+          <p className="font-semibold">Hiragana</p>
+          <p className="mt-1 whitespace-pre-wrap">{item.kanaReading}</p>
+        </div>
+      ) : null}
+      {item.romaji ? (
+        <div>
+          <p className="font-semibold">Romaji</p>
+          <p className="mt-1 whitespace-pre-wrap">{item.romaji}</p>
+        </div>
+      ) : null}
+      {item.ocrText ? (
+        <div>
+          <p className="font-semibold">Văn bản OCR từ ảnh</p>
+          <p className="mt-1 whitespace-pre-wrap">{item.ocrText}</p>
+        </div>
+      ) : null}
+      {item.kanjiExplanations.length > 0 ? (
+        <div>
+          <p className="font-semibold">Giải thích Hán tự</p>
+          <div className="mt-3 space-y-3">
+            {item.kanjiExplanations.map((kanji, index) => (
+              <div key={`${kanji.kanji}-${index}`} className="rounded-md border px-3 py-2">
+                <p className="font-semibold">
+                  {kanji.kanji} · {kanji.reading}
+                </p>
+                <p className="mt-1 text-muted-foreground">{kanji.meaning}</p>
+                <p className="mt-1 text-muted-foreground">{kanji.note}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      {item.grammarPoints.length > 0 ? (
+        <div>
+          <p className="font-semibold">Giải thích ngữ pháp</p>
+          <div className="mt-3 space-y-4">
+            {item.grammarPoints.map((point, index) => (
+              <div key={`${point.title}-${index}`} className="rounded-md border px-3 py-2">
+                <p className="font-semibold">{point.title}</p>
+                <p className="mt-1 text-muted-foreground">{point.explanation}</p>
+                {point.examples.length > 0 ? (
+                  <div className="mt-2 space-y-2 text-muted-foreground">
+                    {point.examples.map((example, exampleIndex) => (
+                      <div key={`${point.title}-${exampleIndex}`}>
+                        <p>{example.jp}</p>
+                        <p>{example.vi}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      {item.notes && item.notes.length > 0 ? (
+        <div>
+          <p className="font-semibold">Ghi chú thêm</p>
+          <div className="mt-2 space-y-1 text-muted-foreground">
+            {item.notes.map((note, index) => (
+              <p key={`${note}-${index}`}>{note}</p>
+            ))}
+          </div>
         </div>
       ) : null}
     </div>

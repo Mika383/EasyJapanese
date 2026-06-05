@@ -2,6 +2,15 @@ import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { generateTranslation } from "@/lib/gemini"
+import { getAppLimitSettings } from "@/lib/app-settings"
+import {
+  JLPT_LEVELS,
+  TRANSLATION_DIRECTIONS,
+  TRANSLATION_STYLES,
+  type JlptLevel,
+  type TranslationDirection,
+  type TranslationStyle,
+} from "@/lib/translate-types"
 
 export const runtime = "nodejs"
 
@@ -11,11 +20,14 @@ type TranslateRequest = {
     data: string
     mimeType: string
   }
+  direction?: TranslationDirection
+  jlptLevel?: JlptLevel
+  translationStyle?: TranslationStyle
   includeGrammar?: boolean
   includeKana?: boolean
+  includeKanji?: boolean
 }
 
-const GRAMMAR_LIMIT_STUDENT = Number(process.env.GRAMMAR_DAILY_LIMIT ?? 10)
 const VN_OFFSET_MS = 7 * 60 * 60 * 1000
 
 const getVietnamPeriodStart = (now: Date) => {
@@ -56,8 +68,18 @@ export async function POST(req: Request) {
     const body = (await req.json()) as TranslateRequest
     const text = body.text?.trim()
     const image = body.image
+    const direction = TRANSLATION_DIRECTIONS.includes(body.direction ?? "JP_TO_VI")
+      ? body.direction ?? "JP_TO_VI"
+      : "JP_TO_VI"
+    const jlptLevel = JLPT_LEVELS.includes(body.jlptLevel ?? "N5")
+      ? body.jlptLevel ?? "N5"
+      : "N5"
+    const translationStyle = TRANSLATION_STYLES.includes(body.translationStyle ?? "STRUCTURED")
+      ? body.translationStyle ?? "STRUCTURED"
+      : "STRUCTURED"
     const includeGrammar = body.includeGrammar ?? false
     const includeKana = body.includeKana ?? true
+    const includeKanji = body.includeKanji ?? false
 
     if (!userId && (image || includeGrammar)) {
       return NextResponse.json(
@@ -71,7 +93,14 @@ export async function POST(req: Request) {
       )
     }
 
+    if (direction === "VI_TO_JP" && image) {
+      return errorResponse(400, "Dịch từ ảnh chỉ hỗ trợ chiều Nhật sang Việt.", {
+        image: "unsupported_for_direction",
+      })
+    }
+
     if (userId && includeGrammar && role === "STUDENT") {
+      const settings = await getAppLimitSettings()
       const usageModel = (prisma as unknown as {
         grammarExplainUsage?: {
           findUnique: (args: {
@@ -100,7 +129,7 @@ export async function POST(req: Request) {
         where: { userId_periodStart: { userId, periodStart } },
       })
 
-      if (usage && usage.count >= GRAMMAR_LIMIT_STUDENT) {
+      if (usage && usage.count >= settings.grammarDailyLimit) {
         return NextResponse.json(
           {
             error: {
@@ -129,8 +158,12 @@ export async function POST(req: Request) {
     const result = await generateTranslation({
       text: text || undefined,
       image: image?.data ? image : undefined,
+      direction,
+      jlptLevel: direction === "VI_TO_JP" ? jlptLevel : undefined,
+      translationStyle: direction === "VI_TO_JP" ? translationStyle : undefined,
       includeGrammar,
       includeKana,
+      includeKanji,
     })
 
     return NextResponse.json({ data: result })
